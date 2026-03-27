@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: track
+
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:trackdb}
+    username: ${PGUSER:trackuser}
+    password: ${PGPASSWORD:trackpass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET:qv773hxpzC5BFE4qrdaQr2+uHyF/QTteY2sgbqm0N32/RgV1SWMOBoPm93ZX4XNSu1atjarP+3DEvyNhZtIS7w==}
+  access-token-expiration: 86400000
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

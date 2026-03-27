@@ -1,0 +1,488 @@
+{
+	"info": {
+		"name": "TaskFlow API - Module 1",
+		"description": "Complete API collection for TaskFlow project management application - Module 1 (Auth, Users, Projects)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.success && jsonData.data.token) {",
+									"        pm.collectionVariables.set('token', jsonData.data.token);",
+									"        console.log('Token saved:', jsonData.data.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@taskflow.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Login with email and password. Returns JWT token and user details.\n\n**Default Admin Credentials:**\n- Email: admin@taskflow.com\n- Password: Admin@123"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "me"]
+						},
+						"description": "Get current authenticated user details. Requires JWT token."
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"Admin@123\",\n  \"newPassword\": \"NewPassword@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "password"]
+						},
+						"description": "Change password for current user. Requires current password and new password."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						},
+						"description": "Get all users. **Admin only.**"
+					},
+					"response": []
+				},
+				{
+					"name": "Create User (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"developer@taskflow.com\",\n  \"fullName\": \"John Developer\",\n  \"password\": \"Dev@1234\",\n  \"role\": \"DEVELOPER\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						},
+						"description": "Create a new user. **Admin only.**\n\n**Validation:**\n- Email must be unique\n- Password minimum 8 characters\n- Role: ADMIN or DEVELOPER"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/:userId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", ":userId"],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "REPLACE_WITH_USER_ID"
+								}
+							]
+						},
+						"description": "Get user by ID.\n- **Admin:** Can view any user\n- **Developer:** Can only view their own profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Updated Name\",\n  \"role\": \"DEVELOPER\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/:userId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users", ":userId"],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "REPLACE_WITH_USER_ID"
+								}
+							]
+						},
+						"description": "Update user details. **Admin only.**\n\n**Business Rule:** Cannot deactivate the last active admin."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "Get All Projects",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects"]
+						},
+						"description": "Get all projects.\n- **Admin:** Returns all projects\n- **Developer:** Returns only projects they are a member of"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"E-Commerce Platform\",\n  \"description\": \"Building a modern e-commerce platform\",\n  \"color\": \"#3B82F6\",\n  \"memberIds\": []\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/projects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects"]
+						},
+						"description": "Create a new project. **Admin only.**\n\n**Business Rules:**\n- Creator is automatically added as a member\n- Color must be valid hex format (#RRGGBB)\n- Members must be active users"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Project by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/:projectId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects", ":projectId"],
+							"variable": [
+								{
+									"key": "projectId",
+									"value": "REPLACE_WITH_PROJECT_ID"
+								}
+							]
+						},
+						"description": "Get project by ID with full member list.\n- **Admin:** Can view any project\n- **Developer:** Must be a member"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Project (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Project Name\",\n  \"description\": \"Updated description\",\n  \"color\": \"#22C55E\",\n  \"status\": \"ACTIVE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/:projectId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects", ":projectId"],
+							"variable": [
+								{
+									"key": "projectId",
+									"value": "REPLACE_WITH_PROJECT_ID"
+								}
+							]
+						},
+						"description": "Update project details. **Admin only.**\n\n**Valid statuses:** ACTIVE, ON_HOLD, COMPLETED, ARCHIVED"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Project (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/:projectId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects", ":projectId"],
+							"variable": [
+								{
+									"key": "projectId",
+									"value": "REPLACE_WITH_PROJECT_ID"
+								}
+							]
+						},
+						"description": "Delete project. **Admin only.** Cascades to project members."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Project Member (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"REPLACE_WITH_USER_ID\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/:projectId/members",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects", ":projectId", "members"],
+							"variable": [
+								{
+									"key": "projectId",
+									"value": "REPLACE_WITH_PROJECT_ID"
+								}
+							]
+						},
+						"description": "Add member to project. **Admin only.**\n\n**Business Rules:**\n- User must exist and be active\n- Cannot add duplicate members"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Project Member (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/:projectId/members/:userId",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "projects", ":projectId", "members", ":userId"],
+							"variable": [
+								{
+									"key": "projectId",
+									"value": "REPLACE_WITH_PROJECT_ID"
+								},
+								{
+									"key": "userId",
+									"value": "REPLACE_WITH_USER_ID"
+								}
+							]
+						},
+						"description": "Remove member from project. **Admin only.**\n\n**Business Rule:** Cannot remove the project creator."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
