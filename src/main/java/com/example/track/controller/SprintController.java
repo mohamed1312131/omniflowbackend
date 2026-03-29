@@ -5,6 +5,8 @@ import com.example.track.dto.request.CreateSprintRequest;
 import com.example.track.dto.request.UpdateSprintRequest;
 import com.example.track.dto.response.ApiResponse;
 import com.example.track.dto.response.SprintResponse;
+import com.example.track.dto.response.StoryWithTasksResponse;
+import com.example.track.service.UserStoryService;
 import com.example.track.security.SecurityUtils;
 import com.example.track.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class SprintController {
 
     private final SprintService sprintService;
+    private final UserStoryService userStoryService;
     private final SecurityUtils securityUtils;
 
     @GetMapping("/projects/{projectId}/sprints")
@@ -44,6 +47,13 @@ public class SprintController {
             @Valid @RequestBody CreateSprintRequest request) {
         SprintResponse sprint = sprintService.createSprint(projectId, request, securityUtils.getCurrentUser());
         return ResponseEntity.ok(ApiResponse.success(sprint));
+    }
+
+    @GetMapping("/sprints/{id}/board")
+    @Operation(summary = "Get all stories with tasks for a sprint board (single query)")
+    public ResponseEntity<ApiResponse<List<StoryWithTasksResponse>>> getSprintBoard(@PathVariable UUID id) {
+        List<StoryWithTasksResponse> board = userStoryService.getSprintBoard(id);
+        return ResponseEntity.ok(ApiResponse.success(board));
     }
 
     @GetMapping("/sprints/{id}")

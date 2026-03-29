@@ -97,6 +97,13 @@ public class UserStoryService {
         return toResponse(saved);
     }
 
+    public List<StoryWithTasksResponse> getSprintBoard(UUID sprintId) {
+        return userStoryRepository.findBySprintIdWithTasksOrderByPositionAsc(sprintId)
+                .stream()
+                .map(this::toDetailedResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public List<StoryWithTasksResponse> importFromCsv(UUID projectId, UUID sprintId, MultipartFile file, User currentUser) {
         // Parse CSV into grouped structure
