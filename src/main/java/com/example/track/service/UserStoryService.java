@@ -1,8 +1,19 @@
 package com.example.track.service;
 
 import com.example.track.domain.*;
+import com.example.track.dto.request.BulkCreateStoriesRequest;
 import com.example.track.dto.request.CreateStoryRequest;
 import com.example.track.dto.request.UpdateStoryRequest;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import com.example.track.dto.response.StoryResponse;
 import com.example.track.dto.response.StoryWithTasksResponse;
 import com.example.track.dto.response.TaskResponse;
@@ -10,6 +21,7 @@ import com.example.track.dto.response.UserResponse;
 import com.example.track.exception.ResourceNotFoundException;
 import com.example.track.repository.ProjectRepository;
 import com.example.track.repository.SprintRepository;
+import com.example.track.repository.TaskRepository;
 import com.example.track.repository.UserStoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +41,7 @@ public class UserStoryService {
     private final UserStoryRepository userStoryRepository;
     private final ProjectRepository projectRepository;
     private final SprintRepository sprintRepository;
+    private final TaskRepository taskRepository;
     private final ActivityLogService activityLogService;
 
     public List<StoryResponse> getProjectStories(UUID projectId, UUID sprintId, Boolean backlog) {
@@ -82,6 +95,120 @@ public class UserStoryService {
         activityLogService.logActivity("STORY", saved.getId(), currentUser, "created", null);
 
         return toResponse(saved);
+    }
+
+    @Transactional
+    public List<StoryWithTasksResponse> importFromCsv(UUID projectId, UUID sprintId, MultipartFile file, User currentUser) {
+        // Parse CSV into grouped structure
+        LinkedHashMap<String, BulkCreateStoriesRequest.StoryItem> storiesMap = new LinkedHashMap<>();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            Iterable<CSVRecord> records = CSVFormat.DEFAULT
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setIgnoreEmptyLines(true)
+                    .setTrim(true)
+                    .build()
+                    .parse(reader);
+
+            for (CSVRecord record : records) {
+                String storyTitle = record.get("User Story");
+                String taskTitle  = record.get("Task");
+                String priority   = record.get("Priority");
+                String description = record.get("Description");
+
+                storiesMap.computeIfAbsent(storyTitle, t -> {
+                    BulkCreateStoriesRequest.StoryItem s = new BulkCreateStoriesRequest.StoryItem();
+                    s.setTitle(t);
+                    s.setTasks(new ArrayList<>());
+                    return s;
+                });
+
+                BulkCreateStoriesRequest.StoryItem.TaskItem task = new BulkCreateStoriesRequest.StoryItem.TaskItem();
+                task.setTitle(taskTitle);
+                task.setPriority(priority);
+                task.setDescription(description);
+                storiesMap.get(storyTitle).getTasks().add(task);
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to parse CSV file: " + e.getMessage());
+        }
+
+        BulkCreateStoriesRequest bulkRequest = new BulkCreateStoriesRequest();
+        bulkRequest.setSprintId(sprintId);
+        bulkRequest.setStories(new ArrayList<>(storiesMap.values()));
+
+        return bulkCreateStoriesWithTasks(projectId, bulkRequest, currentUser);
+    }
+
+    @Transactional
+    public List<StoryWithTasksResponse> bulkCreateStoriesWithTasks(UUID projectId, BulkCreateStoriesRequest request, User currentUser) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+
+        Sprint sprint = null;
+        if (request.getSprintId() != null) {
+            sprint = sprintRepository.findById(request.getSprintId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Sprint not found"));
+        }
+
+        final Sprint resolvedSprint = sprint;
+
+        return request.getStories().stream().map(storyItem -> {
+            UserStory.Priority priority = UserStory.Priority.MEDIUM;
+            if (storyItem.getPriority() != null) {
+                try {
+                    priority = UserStory.Priority.valueOf(storyItem.getPriority().toUpperCase());
+                } catch (IllegalArgumentException e) { /* keep default */ }
+            }
+
+            UserStory story = UserStory.builder()
+                    .project(project)
+                    .sprint(resolvedSprint)
+                    .title(storyItem.getTitle())
+                    .description(storyItem.getDescription())
+                    .priority(priority)
+                    .position(0)
+                    .createdBy(currentUser)
+                    .build();
+
+            UserStory savedStory = userStoryRepository.save(story);
+            activityLogService.logActivity("STORY", savedStory.getId(), currentUser, "created", null);
+
+            if (storyItem.getTasks() != null && !storyItem.getTasks().isEmpty()) {
+                List<Task> tasks = storyItem.getTasks().stream().map(taskItem -> {
+                    UserStory.Priority taskPriority = UserStory.Priority.MEDIUM;
+                    if (taskItem.getPriority() != null) {
+                        try {
+                            taskPriority = UserStory.Priority.valueOf(taskItem.getPriority().toUpperCase());
+                        } catch (IllegalArgumentException e) { /* keep default */ }
+                    }
+
+                    Task.TaskStatus status = Task.TaskStatus.TODO;
+                    if (taskItem.getStatus() != null) {
+                        try {
+                            status = Task.TaskStatus.valueOf(taskItem.getStatus().toUpperCase());
+                        } catch (IllegalArgumentException e) { /* keep default */ }
+                    }
+
+                    return Task.builder()
+                            .story(savedStory)
+                            .title(taskItem.getTitle())
+                            .description(taskItem.getDescription())
+                            .status(status)
+                            .priority(taskPriority)
+                            .position(0)
+                            .build();
+                }).collect(Collectors.toList());
+
+                List<Task> savedTasks = taskRepository.saveAll(tasks);
+                savedTasks.forEach(t -> activityLogService.logActivity("TASK", t.getId(), currentUser, "created", null));
+                savedStory.getTasks().addAll(savedTasks);
+            }
+
+            return toDetailedResponse(savedStory);
+        }).collect(Collectors.toList());
     }
 
     public StoryWithTasksResponse getStory(UUID id) {
