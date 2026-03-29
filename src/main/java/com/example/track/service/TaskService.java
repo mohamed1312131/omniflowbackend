@@ -1,6 +1,7 @@
 package com.example.track.service;
 
 import com.example.track.domain.*;
+import com.example.track.dto.request.BulkCreateTaskRequest;
 import com.example.track.dto.request.CreateTaskRequest;
 import com.example.track.dto.request.UpdateTaskRequest;
 import com.example.track.dto.response.SubTaskResponse;
@@ -84,6 +85,42 @@ public class TaskService {
         activityLogService.logActivity("TASK", saved.getId(), currentUser, "created", null);
 
         return toResponse(saved);
+    }
+
+    @Transactional
+    public List<TaskResponse> bulkCreateTasks(UUID storyId, BulkCreateTaskRequest request, User currentUser) {
+        UserStory story = userStoryRepository.findById(storyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Story not found"));
+
+        List<Task> tasks = request.getTasks().stream().map(item -> {
+            UserStory.Priority priority = UserStory.Priority.MEDIUM;
+            if (item.getPriority() != null) {
+                try {
+                    priority = UserStory.Priority.valueOf(item.getPriority().toUpperCase());
+                } catch (IllegalArgumentException e) { /* keep default */ }
+            }
+
+            Task.TaskStatus status = Task.TaskStatus.TODO;
+            if (item.getStatus() != null) {
+                try {
+                    status = Task.TaskStatus.valueOf(item.getStatus().toUpperCase());
+                } catch (IllegalArgumentException e) { /* keep default */ }
+            }
+
+            return Task.builder()
+                    .story(story)
+                    .title(item.getTitle())
+                    .description(item.getDescription())
+                    .status(status)
+                    .priority(priority)
+                    .position(0)
+                    .build();
+        }).collect(Collectors.toList());
+
+        List<Task> saved = taskRepository.saveAll(tasks);
+        saved.forEach(t -> activityLogService.logActivity("TASK", t.getId(), currentUser, "created", null));
+
+        return saved.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public TaskResponse getTask(UUID id) {

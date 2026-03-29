@@ -1,5 +1,6 @@
 package com.example.track.controller;
 
+import com.example.track.dto.request.BulkCreateTaskRequest;
 import com.example.track.dto.request.CreateCommentRequest;
 import com.example.track.dto.request.CreateSubTaskRequest;
 import com.example.track.dto.request.CreateTaskRequest;
@@ -51,6 +52,16 @@ public class TaskController {
         request.setStoryId(storyId);
         TaskResponse task = taskService.createTask(request, securityUtils.getCurrentUser());
         return ResponseEntity.ok(ApiResponse.success(task));
+    }
+
+    @PostMapping("/stories/{storyId}/tasks/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Bulk create tasks for a story (Admin only)")
+    public ResponseEntity<ApiResponse<List<TaskResponse>>> bulkCreateTasks(
+            @PathVariable UUID storyId,
+            @Valid @RequestBody BulkCreateTaskRequest request) {
+        List<TaskResponse> tasks = taskService.bulkCreateTasks(storyId, request, securityUtils.getCurrentUser());
+        return ResponseEntity.ok(ApiResponse.success(tasks));
     }
 
     @GetMapping("/tasks/{id}")
