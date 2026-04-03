@@ -275,6 +275,16 @@ public class UserStoryService {
         userStoryRepository.delete(story);
     }
 
+    @Transactional
+    public int deleteAllStoriesByProjectId(UUID projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new ResourceNotFoundException("Project not found");
+        }
+        List<UserStory> stories = userStoryRepository.findByProjectIdOrderByPositionAsc(projectId);
+        userStoryRepository.deleteAll(stories);
+        return stories.size();
+    }
+
     private StoryResponse toResponse(UserStory story) {
         int totalTasks = story.getTasks().size();
         int completedTasks = (int) story.getTasks().stream()

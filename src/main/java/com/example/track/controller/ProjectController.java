@@ -8,6 +8,7 @@ import com.example.track.dto.response.ProjectProgressResponse;
 import com.example.track.dto.response.ProjectResponse;
 import com.example.track.dto.response.ProjectSummaryResponse;
 import com.example.track.service.ProjectService;
+import com.example.track.service.UserStoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final UserStoryService userStoryService;
 
     @GetMapping
     @Operation(summary = "Get all projects (Admin: all, Developer: only member projects)")
@@ -85,6 +87,14 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Void>> deleteProject(@PathVariable UUID id) {
         projectService.deleteProject(id);
         return ResponseEntity.ok(ApiResponse.success("Project deleted successfully"));
+    }
+
+    @PostMapping("/{id}/stories/clear")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete all user stories and their tasks for a project (Admin only)")
+    public ResponseEntity<ApiResponse<String>> clearProjectStories(@PathVariable UUID id) {
+        int deleted = userStoryService.deleteAllStoriesByProjectId(id);
+        return ResponseEntity.ok(ApiResponse.success("Deleted " + deleted + " user stories and their tasks"));
     }
 
     @PostMapping("/{id}/members")
